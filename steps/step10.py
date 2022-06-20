@@ -51,7 +51,10 @@ class Function:
 
     def backward(self, gy):
         raise NotImplementedError()
-    
+
+##################################################################
+
+
 class Square(Function):
     def forward(self, x):
         y = x**2

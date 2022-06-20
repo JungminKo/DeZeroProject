@@ -12,7 +12,7 @@ class Variable:
         self.data = data
 
 class Function:
-    def __call__(self, input):
+    def __call__(self, input): # 파이썬의 특수 메서드 # f = Function()로 설정하면 추후 f(x)로 호출가능
         x = input.data
         y = self.forward(x) # 구체적인 계산은 forward method에서 진행
         output = Variable(y)
