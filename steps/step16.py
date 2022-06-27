@@ -1,4 +1,3 @@
-from tkinter import Y
 import numpy as np
 
 class Variable:
@@ -29,7 +28,8 @@ class Variable:
                 funcs.append(f)
                 seen_set.add(f)
                 funcs.sort(key=lambda x: x.generation) # 리스트 정렬, generation이 가장 큰 값이 맨 뒤로
-
+        
+        add_func(self.creator)
         ########
 
         while funcs:
@@ -100,3 +100,12 @@ class Add(Function):
 
 def add(x0, x1):
     return Add()(x0, x1)
+
+x0 = Variable(np.array(1.0))
+x1 = Variable(np.array(1.0))
+t = add(x0, x1)
+y = add(x0, t)
+y.backward()
+
+print(y.grad, t.grad)
+print(x0.grad, x1.grad)
