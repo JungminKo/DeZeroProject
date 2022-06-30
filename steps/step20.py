@@ -8,6 +8,8 @@ class Config:
 
 class Function:
     def __call__(self, *inputs):
+        inputs = [as_variable(x) for x in inputs] # Variable 인스턴스로 모두 만들어줌
+
         xs = [x.data for x in inputs] 
         ys = self.forward(*xs)
         if not isinstance(ys, tuple): 
@@ -31,16 +33,6 @@ class Function:
     def backward(self, gy):
         raise NotImplementedError()
 
-class Square(Function):
-    def forward(self, x):
-        y = x**2
-        return y
-
-    def backward(self, gy):
-        x = self.inputs[0].data 
-        gx = 2 * x * gy
-        return gx
-
 class Add(Function):
     def forward(self, x0, x1):
         y = x0 + x1
@@ -58,16 +50,79 @@ class Mul(Function):
         x0, x1 = self.inputs[0].data, self.inputs[1].data
         return gy* x1, gy * x0
 
+class Neg(Function):
+    def forward(self, x):
+        return -x
+    
+    def backward(self, gy):
+        return -gy
+
+class Sub(Function):
+    def forward(self, x0, x1):
+        y = x0 - x1
+        return y
+
+    def backward(self, gy):
+        return gy, -gy
+
+class Div(Function):
+    def forward(self, x0, x1):
+        y = x0 / x1
+        return y
+
+    def backward(self, gy):
+        x0, x1 = self.inputs[0].data, self.inputs[1].data
+        gx0 = gy / x1
+        gx1 = gy * (-x0 / x1 ** 2)
+        return gx0, gx1
+
+class Pow(Function):
+    def __init__(self, c):
+        self.c = c
+
+    def forward(self, x):
+        y = x ** self.c
+        return y
+
+    def backward(self, gy):
+        x = self.inputs[0].data
+        c = self.c
+        gx = c * x ** (c-1) * gy
+        return gx
+
 def add(x0, x1):
+    x1 = as_array(x1)
     return Add()(x0, x1)
 
-def square(x):
-    return Square()(x)
-
 def mul(x0, x1):
+    x1 = as_array(x1)
     return Mul()(x0, x1)
 
+def neg(x):
+    return Neg()(x)
+
+def sub(x0, x1):
+    x1 = as_array(x1)
+    return Sub()(x0, x1)
+
+def rsub(x0, x1):
+    x1 = as_array(x1)
+    return Sub()(x1, x0) # x0, x1의 순서를 바꿈
+
+def div(x0, x1):
+    x1 = as_array(x1)
+    return Div()(x0, x1)
+
+def rdiv(x0, x1):
+    x1 = as_array(x1)
+    return Div()(x1, x0)
+
+def pow(x, c):
+    return Pow(c)(x)
+
 class Variable:
+    __array_priority__ = 200 # 연산자 우선순위 # 해당값 설정시 ndarray 인스턴스보다 우선순위가 높음
+
     def __init__(self, data, name=None): 
         if data is not None: 
             if not isinstance(data, np.ndarray):
@@ -151,15 +206,26 @@ class Variable:
     #     return mul(self, other)
 
 ### 보다 더 간략한 코드 ###
-Variable.__mul__ = mul
 Variable.__add__ = add
-
+Variable.__radd__ = add
+Variable.__mul__ = mul
+Variable.__rmul__ = mul
+Variable.__neg__ = neg
+Variable.__sub__ = sub
+Variable.__rsub__ = rsub
+Variable.__truediv__ = div
+Variable.__rtruediv__ = rdiv
+Variable.__pow__ = pow
 
 def as_array(x):
     if np.isscalar(x):
         return np.array(x)
     return x
 
+def as_variable(obj):
+    if isinstance(obj, Variable):
+        return obj
+    return Variable(obj)
 
 @contextlib.contextmanager
 def using_config(name, value): 
@@ -188,13 +254,23 @@ def no_grad():
 # print(b.grad)
 
 # 예제 2
-a = Variable(np.array(3.0))
-b = Variable(np.array(2.0))
-c = Variable(np.array(1.0))
+# a = Variable(np.array(3.0))
+# b = Variable(np.array(2.0))
+# c = Variable(np.array(1.0))
 
-y = a * b + c
-y.backward()
+# y = a * b + c
+# y.backward()
 
+# print(y)
+# print(a.grad)
+# print(b.grad)
+
+# 예제 3
+# x = Variable(np.array(2.0))
+# y = 3.0 * x + 1.0 
+# print(y)
+
+# 예제 4 
+x = Variable(np.array(2.0))
+y = x ** 3
 print(y)
-print(a.grad)
-print(b.grad)
